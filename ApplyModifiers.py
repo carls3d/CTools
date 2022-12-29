@@ -36,3 +36,5 @@ if __name__ == '__main__' or 'modifierName' in locals():
     applyModifiers()
     stop = timeit.default_timer()
     print(f'Time: {stop-start}\n')
+    
+    
