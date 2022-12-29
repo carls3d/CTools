@@ -4,4 +4,4 @@
 The .py files are not an add-on, but the scripts used in the add-on. 
 All UI elements and interactions are made with [Serpens](https://blendermarket.com/products/serpens), which makes the final code hard to read.
 
-If you don't want to read the code or contribute, click the "Ko-Fi Link" to download the add-on!
+This github repository is for sharing the scripts used in the free add-on and allowing others to contribute if they wish.
