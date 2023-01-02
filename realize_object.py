@@ -1,6 +1,10 @@
 import bpy
 
+# By Carlsu https://github.com/carls3d
+# Made to be injected as a script in a class
+
 def realizeobject():
+    # Created thanks to: https://github.com/BrendanParmer/NodeToPython 
     realizeobject = bpy.data.node_groups.new(type = "GeometryNodeTree", name = "_RealizeObject")
     realizeobject.outputs.new("NodeSocketGeometry", "Geometry")
     realizeobject.inputs.new("NodeSocketGeometry", "Geometry")

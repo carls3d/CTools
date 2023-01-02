@@ -1,5 +1,8 @@
 import bpy
 
+# By Carlsu https://github.com/carls3d
+# Made to be injected as a script in a class
+
 obj = bpy.context.view_layer.objects
 source = obj.active
 parent = obj.active.parent
