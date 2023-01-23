@@ -1,6 +1,9 @@
 import bpy
 import timeit
 
+# By Carlsu https://github.com/carls3d
+# Made to be injected as a script in a class
+
 def applyModifiers():
     obj = bpy.context.active_object
     shapekeys = obj.data.shape_keys.key_blocks
