@@ -17,7 +17,7 @@ def realizeobject():
     object_info = realizeobject.nodes.new("GeometryNodeObjectInfo")
     object_info.location = (-120.77420043945312, 0.0)
     object_info.width, object_info.height = 140.0, 100.0
-    object_info.transform_space = 'ORIGINAL'
+    object_info.transform_space = 'RELATIVE'
     object_info.inputs[1].default_value = False
 
     realize_instances = realizeobject.nodes.new("GeometryNodeRealizeInstances")
@@ -50,3 +50,15 @@ bpy.context.active_object.modifiers[-1]['Input_2'] = bpy.data.objects[obj.name]
 bpy.ops.object.modifier_apply(modifier="GeometryNodes")
 
 new_obj.select_set(True)
+
+
+obj = bpy.context.active_object
+attributes = obj.data.attributes
+
+attr_uvs = [i for i, attr in enumerate(attributes) if attr.data_type == 'FLOAT_VECTOR' and attr.domain == 'CORNER' and 'UV' in attr.name]
+obj_uvs = obj.data.uv_layers
+
+if len(attr_uvs) == 1 and len(obj_uvs) == 0:
+    attributes.active_index = attr_uvs[0]
+    bpy.ops.geometry.attribute_convert(mode='UV_MAP')
+    
