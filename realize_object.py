@@ -4,8 +4,12 @@ import bpy
 # Made to be injected as a script in a class
 
 def realizeobject():
-    # Created thanks to: https://github.com/BrendanParmer/NodeToPython 
-    realizeobject = bpy.data.node_groups.new(type = "GeometryNodeTree", name = "_RealizeObject")
+    # Created with: https://github.com/BrendanParmer/NodeToPython 
+    if "_RealizeObject" in bpy.data.node_groups:
+        realizeobject = bpy.data.node_groups['_RealizeObject']
+    else:
+        realizeobject = bpy.data.node_groups.new(type = "GeometryNodeTree", name = "_RealizeObject")
+        
     realizeobject.outputs.new("NodeSocketGeometry", "Geometry")
     realizeobject.inputs.new("NodeSocketGeometry", "Geometry")
     realizeobject.inputs.new("NodeSocketObject", "Object")
@@ -34,31 +38,40 @@ def realizeobject():
 
     return realizeobject.name
 
+def main():
+    modifier = realizeobject()
 
-modifier = realizeobject()
-
-obj = bpy.context.view_layer.objects.active
-mesh = bpy.data.meshes.new(obj.name+"_mesh")
-new_obj = bpy.data.objects.new(obj.name+"_mesh", mesh)
-
-bpy.context.collection.objects.link(new_obj)
-bpy.context.view_layer.objects.active = new_obj
-
-bpy.ops.object.modifier_add(type='NODES')
-bpy.context.active_object.modifiers[-1].node_group = bpy.data.node_groups[modifier]
-bpy.context.active_object.modifiers[-1]['Input_2'] = bpy.data.objects[obj.name]
-bpy.ops.object.modifier_apply(modifier="GeometryNodes")
-
-new_obj.select_set(True)
-
-
-obj = bpy.context.active_object
-attributes = obj.data.attributes
-
-attr_uvs = [i for i, attr in enumerate(attributes) if attr.data_type == 'FLOAT_VECTOR' and attr.domain == 'CORNER' and 'UV' in attr.name]
-obj_uvs = obj.data.uv_layers
-
-if len(attr_uvs) == 1 and len(obj_uvs) == 0:
-    attributes.active_index = attr_uvs[0]
-    bpy.ops.geometry.attribute_convert(mode='UV_MAP')
+    obj = bpy.context.active_object
+    collections = [col for col in obj.users_collection]
     
+    mesh = bpy.data.meshes.new(obj.name+"_mesh")
+    new_obj = bpy.data.objects.new(obj.name+"_mesh", mesh)
+    for col in collections:
+        col.objects.link(new_obj)
+
+    bpy.context.view_layer.objects.active = new_obj
+    bpy.ops.object.modifier_add(type='NODES')
+    bpy.context.active_object.modifiers[-1].node_group = bpy.data.node_groups[modifier]
+    bpy.context.active_object.modifiers[-1]['Input_2'] = bpy.data.objects[obj.name]
+    bpy.ops.object.modifier_apply(modifier="GeometryNodes")
+
+    bpy.ops.object.select_all(action="DESELECT")
+    bpy.context.active_object.select_set(True)
+
+    obj = bpy.context.active_object
+    attributes = obj.data.attributes
+
+    if bpy.app.version >= (3, 5, 0):
+        attr_uvs = [i for i, attr in enumerate(attributes) if attr.data_type == 'FLOAT2' and attr.domain == 'CORNER' and 'UV' in attr.name]
+    else:
+        attr_uvs = [i for i, attr in enumerate(attributes) if attr.data_type == 'FLOAT_VECTOR' and attr.domain == 'CORNER' and 'UV' in attr.name]
+    obj_uvs = obj.data.uv_layers
+
+    if len(attr_uvs) == 1 and len(obj_uvs) == 0:
+        attributes.active_index = attr_uvs[0]
+        bpy.ops.geometry.attribute_convert(mode='UV_MAP')
+    
+main()  # when injected as script
+
+# if __name__ == "__main__":    # when imported as module
+#     main()
