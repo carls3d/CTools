@@ -116,7 +116,7 @@ class AccumulateField:
         return [self.total_values[g] for g in self.GroupID]
 
     def __repr__(self) -> str:
-        return f"\nLeading:\n{self.leading()}\n\nTrailing:\n{self.trailing()}\n\nTotal:\n{self.total()}\n"
+        return f"Leading:\n{self.leading()}\n\nTrailing:\n{self.trailing()}\n\nTotal:\n{self.total()}\n"
 
 Scores = [1, 1, 1, 
           4, 0, 1]
@@ -138,37 +138,36 @@ def group_reindex(GroupID:list) -> list:
     return [a+b for a,b in zip(af1_trailing, af2_trailing)]
 
 def Example1():
-    print("---- Test 1 ----")
+    print("---- Example 1 ----")
     # Example: Elements with the same ID are re-indexed sequentially, following the previous group's total
     # "10" Original Index: 0, 3, 6, 9, 12   ->  Re-Index:   0, 1, 2, 3, 4
     # "18" Original Index: 1, 4, 7, 10, 13  ->  Re-Index:   5, 6, 7, 8, 9
     # "82" Original Index: 2, 5, 8, 11, 14  ->  Re-Index:   10, 11, 12, 13, 14
     isl_ind = [10, 18, 82, 10, 18, 82, 10, 18, 82, 10, 18, 82, 10, 18, 82]
     indices = [i for i in range(len(isl_ind))]
-    x = group_reindex(isl_ind)
-    print(f"Re-Index:\n{x}")
+    re_indexed = group_reindex(isl_ind)
+    print(f"Re-Index:\n{re_indexed}")
     print(indices)
     print(group_reindex(isl_ind))
     print()
 
 def Example2():
     from math import pi
-    print("---- Test 2 ----")
-    indices = range(15)
-    print(pi)
+    print("---- Example 2 ----")
+    grpID = [1 for _ in range(10)]
     a = 0.5
     b = 2 * pi
-    acc1 = AccumulateField(a, [1 for i in indices])
+    acc1 = AccumulateField(a, grpID)
     print(acc1)
-    x_lead = [i+b for i in acc1.leading()]
-    # print(x_lead)
-    acc2 = AccumulateField(x_lead, [1 for i in indices])
-    # print(acc2)
+    lead_plus_b = [i+b for i in acc1.leading()]
+    print(f"Leading + 2*pi\n{lead_plus_b}\n")
+    acc2 = AccumulateField(lead_plus_b, grpID)
+    print(acc2)
 
 def Example3():
-    print("---- Test 3 ----")
-    val = 3
-    grp = [1, 1, 1, 2, 2, 2]
+    print("---- Example 3 ----")
+    val = 3 # Equivalent to [3, 3, 3, 3, 3, 3]
+    grp = [1]*3 + [2]*3   # [1, 1, 1, 2, 2, 2]
     acc = AccumulateField(val, grp)
     print(acc)
     
