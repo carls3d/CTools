@@ -9,6 +9,101 @@ def popup_window(title:str = "Error", text:str|list = "Error message", icon:str 
             row.label(text=line)
     bpy.context.window_manager.popup_menu(popup, title=title, icon=icon) 
 
+def weight_transfer():
+    obj = bpy.context.view_layer.objects
+    source = obj.active
+    parent = obj.active.parent
+
+    bpy.ops.object.data_transfer(
+        data_type='VGROUP_WEIGHTS', 
+        vert_mapping='POLYINTERP_NEAREST', 
+        layers_select_src='ALL', 
+        layers_select_dst='NAME', 
+        mix_mode='REPLACE', 
+        mix_factor=1
+        )
+
+    if parent:
+        if parent.type == 'ARMATURE':
+            obj.active = parent
+            bpy.ops.object.parent_set(
+                type='ARMATURE', 
+                keep_transform=True
+                )
+            obj.active = source
+
+def apply_modifiers(modifierName:str = None):
+    def select_object(ob:bpy.types.Object, select:bool):
+        if bpy.app.version < (3, 5, 0):
+            ob.select = True
+        else:
+            ob.select_set(True)
+    
+    obj = bpy.context.active_object
+    shapekeys = obj.data.shape_keys.key_blocks
+    # Use active when ran on it's own as a script
+    if not modifierName and obj.modifiers.active:
+        if obj.modifiers.active:
+            modifierName = obj.modifiers.active.name
+        else: return
+    
+    objects = []
+    for i, k in enumerate(shapekeys[1:]):
+        bpy.context.view_layer.objects.active = obj
+        bpy.ops.object.select_all(action='DESELECT')
+        select_object(obj, True)
+        bpy.ops.object.duplicate()
+        
+        bpy.context.active_object.show_only_shape_key = True        # Only use a single shapekey value
+        bpy.context.active_object.active_shape_key_index = i+1      # Set active shapekey index
+        bpy.ops.object.shape_key_remove(all=True, apply_mix=True)   # Apply shapekey
+        bpy.ops.object.modifier_apply(modifier=modifierName)        # Apply modifier
+        bpy.context.active_object.name = k.name                     # Set name
+        objects.append(bpy.context.active_object)                  # Add to list
+
+    for ob in objects: 
+        select_object(ob, True)
+    bpy.context.view_layer.objects.active = obj             # Set active object
+    bpy.context.active_object.shape_key_clear()             # Remove shapekeys
+    bpy.ops.object.modifier_apply(modifier=modifierName)    # Apply modifier
+    bpy.ops.object.join_shapes()                            # Add shapekeys
+    for k in objects:                                       # Delete placeholders
+        bpy.data.meshes.remove(k.data)
+    select_object(obj, True)
+
+def remove_unused_vertex_groups(threshold:float = 0.01, remove_non_deform_groups:bool=False, remove_locked:bool = False):
+    obj = bpy.context.object
+    vgrps = obj.vertex_groups
+    
+    keep_group = {grp.index:False for grp in vgrps}
+
+    # Groups with weights above threshold
+    for v in obj.data.vertices:
+        for g in v.groups:
+            if g.weight > threshold:
+                keep_group[g.group] = True
+                continue
+    
+    # Groups that are assigned to a bone
+    deform_armatures = [mod.object for mod in obj.modifiers if mod.type == 'ARMATURE' and mod.object]
+    deform_bones = {bone.name for armature in deform_armatures for bone in armature.data.bones} if deform_armatures else None
+    if remove_non_deform_groups and deform_bones:
+        for grp in vgrps:
+            if not keep_group[grp.index]:
+                continue
+            if grp.name not in deform_bones:
+                keep_group[grp.index] = False
+    
+    # Remove groups
+    for grp in vgrps[:][::-1]: # Convert to list and reverse order to avoid index errors
+        if grp.lock_weight and not remove_locked: 
+            continue
+        if keep_group[grp.index]: 
+            continue
+        print(f"Removing group: '{grp.name}'")
+        vgrps.remove(grp)
+
+
 def _vertex_colors_to_materials():
     """Use case?"""
     # Get the active object and its vertex colors
@@ -43,6 +138,7 @@ def _vertex_colors_to_materials():
         for poly_index in face_indices:
             polys[poly_index].material_index = i
 
+# Deprecated
 def convert_curve_haircurve():
     def hair_curves_to_poly_spline(obj):
         # Get the curves, modifiers and name of the hair object.
@@ -158,68 +254,7 @@ def convert_curve_haircurve():
     elif obj.type == 'CURVE':
         spline_to_hair_curves(obj)
 
-def weight_transfer():
-    obj = bpy.context.view_layer.objects
-    source = obj.active
-    parent = obj.active.parent
-
-    bpy.ops.object.data_transfer(
-        data_type='VGROUP_WEIGHTS', 
-        vert_mapping='POLYINTERP_NEAREST', 
-        layers_select_src='ALL', 
-        layers_select_dst='NAME', 
-        mix_mode='REPLACE', 
-        mix_factor=1
-        )
-
-    if parent:
-        if parent.type == 'ARMATURE':
-            obj.active = parent
-            bpy.ops.object.parent_set(
-                type='ARMATURE', 
-                keep_transform=True
-                )
-            obj.active = source
-
-def apply_modifiers(modifierName:str = None):
-    def select_object(ob:bpy.types.Object, select:bool):
-        if bpy.app.version < (3, 5, 0):
-            ob.select = True
-        else:
-            ob.select_set(True)
-    
-    obj = bpy.context.active_object
-    shapekeys = obj.data.shape_keys.key_blocks
-    # Use active when ran on it's own as a script
-    if not modifierName and obj.modifiers.active:
-        if obj.modifiers.active:
-            modifierName = obj.modifiers.active.name
-        else: return
-    
-    objects = []
-    for i, k in enumerate(shapekeys[1:]):
-        bpy.context.view_layer.objects.active = obj
-        bpy.ops.object.select_all(action='DESELECT')
-        select_object(obj, True)
-        bpy.ops.object.duplicate()
-        
-        bpy.context.active_object.show_only_shape_key = True        # Only use a single shapekey value
-        bpy.context.active_object.active_shape_key_index = i+1      # Set active shapekey index
-        bpy.ops.object.shape_key_remove(all=True, apply_mix=True)   # Apply shapekey
-        bpy.ops.object.modifier_apply(modifier=modifierName)        # Apply modifier
-        bpy.context.active_object.name = k.name                     # Set name
-        objects.append(bpy.context.active_object)                  # Add to list
-
-    for ob in objects: 
-        select_object(ob, True)
-    bpy.context.view_layer.objects.active = obj             # Set active object
-    bpy.context.active_object.shape_key_clear()             # Remove shapekeys
-    bpy.ops.object.modifier_apply(modifier=modifierName)    # Apply modifier
-    bpy.ops.object.join_shapes()                            # Add shapekeys
-    for k in objects:                                       # Delete placeholders
-        bpy.data.meshes.remove(k.data)
-    select_object(obj, True)
-
+# Deprecated
 def sharpedges_from_attributes():
     obj = bpy.context.active_object
     edges = obj.data.edges
@@ -233,6 +268,7 @@ def sharpedges_from_attributes():
         for i, attr_edge in enumerate(attr.data):
             edges[i].use_edge_sharp = attr_edge.value
 
+# Deprecated
 def realize_object():
     def realize():
         # Created with: https://github.com/BrendanParmer/NodeToPython 
