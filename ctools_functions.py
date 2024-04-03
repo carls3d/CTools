@@ -1,4 +1,5 @@
 import bpy
+from bpy.types import Operator
 
 def popup_window(title:str = "Error", text:str|list = "Error message", icon:str = 'ERROR'):
     """Each element in text is a line in the popup window"""
@@ -103,6 +104,9 @@ def remove_unused_vertex_groups(threshold:float = 0.01, remove_non_deform_groups
         print(f"Removing group: '{grp.name}'")
         vgrps.remove(grp)
 
+# TODO - 
+def remove_unused_shape_keys():
+    ...
 
 def _vertex_colors_to_materials():
     """Use case?"""
@@ -137,6 +141,8 @@ def _vertex_colors_to_materials():
         polys = obj.data.polygons
         for poly_index in face_indices:
             polys[poly_index].material_index = i
+
+
 
 # Deprecated
 def convert_curve_haircurve():
@@ -336,3 +342,49 @@ def realize_object():
     if len(attr_uvs) == 1 and len(obj_uvs) == 0:
         attributes.active_index = attr_uvs[0]
         bpy.ops.geometry.attribute_convert(mode='UV_MAP')
+        
+
+class CT_WeightTransfer(Operator):
+    bl_idname = "ct.weight_transfer"
+    bl_label = "Weight Transfer"
+    # bl_description = "Transfer weights from active object to parent object"
+    bl_description = "Transfer weights from active object to parent object. It uses 'Transfer Mesh Data' with preset settings for avatar clothing & UI for visual queues"
+    bl_options = {"REGISTER", "UNDO"}
+
+    @classmethod
+    def poll(cls, context):
+        objects = context.view_layer.objects
+        selected_meshes = [ob for ob in objects.selected if ob.type == 'MESH'].__len__() >= 2
+        active_mesh = objects.active and objects.active.type == 'MESH' and objects.active.vertex_groups.__len__() > 0
+        return active_mesh and selected_meshes
+
+    def execute(self, context):
+        objects = bpy.context.view_layer.objects
+        source = objects.active
+        parent = objects.active.parent
+
+        bpy.ops.object.data_transfer(
+            # 'INVOKE_DEFAULT',
+            data_type='VGROUP_WEIGHTS', 
+            vert_mapping='POLYINTERP_NEAREST', 
+            layers_select_src='ALL', 
+            layers_select_dst='NAME', 
+            mix_mode='REPLACE', 
+            mix_factor=1
+            )
+
+        if parent:
+            if parent.type == 'ARMATURE':
+                objects.active = parent
+                bpy.ops.object.parent_set(
+                    type='ARMATURE', 
+                    keep_transform=True
+                    )
+                objects.active = source
+        return {"FINISHED"}
+
+def register():
+    bpy.utils.register_class(CT_WeightTransfer)
+
+def unregister():
+    bpy.utils.unregister_class(CT_WeightTransfer)
